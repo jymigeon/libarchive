@@ -42,8 +42,19 @@ __FBSDID("$FreeBSD$");
 #include "archive_entry.h"
 #include "archive_getdate.h"
 #include "archive_pathmatch.h"
+#include "archive_pathfnmatch.h"
 #include "archive_rb.h"
 #include "archive_string.h"
+
+/* Table that maps matching logic code to their functions */
+static
+struct { char *logic; int (*setter)(struct archive *); } logics[] = {
+	{ "default", archive_match_set_logic_default },
+	{ "gnutar", archive_match_set_logic_default },
+	{ "mtree", archive_match_set_logic_mtree },
+	{ "mtree-classic", archive_match_set_logic_mtree },
+	{ NULL, NULL }
+};
 
 struct match {
 	struct match		*next;
@@ -89,6 +100,11 @@ struct id_array {
 
 struct archive_match {
 	struct archive		 archive;
+
+	/* matching logic */
+	int			 logic;
+	int 	(*match_path_cb)  (const char *, const char *, int);
+	int	(*match_path_w_cb)(const wchar_t *, const wchar_t *, int);
 
 	/* exclusion/inclusion set flag. */
 	int			 setflag;
@@ -169,6 +185,8 @@ static int	match_path_exclusion(struct archive_match *,
 		    struct match *, int, const void *);
 static int	match_path_inclusion(struct archive_match *,
 		    struct match *, int, const void *);
+static int	match_path(struct archive_match *, struct match *,
+		    int, const void *, int);
 static int	owner_excluded(struct archive_match *,
 		    struct archive_entry *);
 static int	path_excluded(struct archive_match *, int, const void *);
@@ -223,6 +241,7 @@ archive_match_new(void)
 		return (NULL);
 	a->archive.magic = ARCHIVE_MATCH_MAGIC;
 	a->archive.state = ARCHIVE_STATE_NEW;
+	archive_match_set_logic_default(&(a->archive));
 	match_list_init(&(a->inclusions));
 	match_list_init(&(a->exclusions));
 	__archive_rb_tree_init(&(a->exclusion_tree), &rb_ops_mbs);
@@ -255,6 +274,63 @@ archive_match_free(struct archive *_a)
 	match_list_free(&(a->inclusion_gnames));
 	free(a);
 	return (ARCHIVE_OK);
+}
+
+int
+archive_match_set_logic(struct archive *a, char *logic)
+{
+	int i;
+
+	for (i = 0; logics[i].logic != NULL; i++) {
+		if (strcmp(logic, logics[i].logic) == 0)
+			return ((logics[i].setter)(a));
+	}
+
+	archive_set_error(a, ARCHIVE_ERRNO_PROGRAMMER,
+	    "Internal programing error, matching logic not supported");
+	return ARCHIVE_FATAL;
+}
+
+/*
+ * This one is a placeholder. For now it returns an error and should never
+ * be called as it is unused.
+ */
+int
+archive_match_set_logic_none(struct archive *_a)
+{
+
+	archive_set_error(_a, EINVAL, "Logic `none' is invalid");
+	/* keep the previous matching logic but notify the error */
+	return ARCHIVE_FAILED;
+}
+
+/*
+ * Matching logic that mimics gtar's behavior. This is the default one.
+ */
+int
+archive_match_set_logic_default(struct archive *_a)
+{
+	struct archive_match *a = (struct archive_match *)_a;
+
+	a->logic = ARCHIVE_MATCH_LOGIC_DEFAULT;
+	a->match_path_cb = __archive_gtar_pathmatch;
+	a->match_path_w_cb = __archive_gtar_pathmatch_w;
+	return ARCHIVE_OK;
+}
+
+/*
+ * Matching logic that mimics mtree exclusion/inclusion patterns. It uses
+ * fnmatch(3) (globbing).
+ */
+int
+archive_match_set_logic_mtree(struct archive *_a)
+{
+	struct archive_match *a = (struct archive_match *)_a;
+
+	a->logic = ARCHIVE_MATCH_LOGIC_MTREE;
+	a->match_path_cb = __archive_mtree_pathmatch;
+	a->match_path_w_cb = __archive_mtree_pathmatch_w;
+	return ARCHIVE_OK;
 }
 
 /*
@@ -574,7 +650,7 @@ add_pattern_from_file(struct archive_match *a, struct match_list *mlist,
 	int64_t offset;
 	int r;
 
-	ar = archive_read_new(); 
+	ar = archive_read_new();
 	if (ar == NULL) {
 		archive_set_error(&(a->archive), ENOMEM, "No memory");
 		return (ARCHIVE_FATAL);
@@ -655,7 +731,7 @@ add_pattern_from_file(struct archive_match *a, struct match_list *mlist,
 		}
 	}
 
-	/* If an error occurred, report it immediately. */
+	/* If something error happend, report it immediately. */
 	if (r < ARCHIVE_OK) {
 		archive_copy_error(&(a->archive), ar);
 		archive_read_free(ar);
@@ -744,61 +820,71 @@ path_excluded(struct archive_match *a, int mbs, const void *pathname)
 	return (0);
 }
 
-/*
- * This is a little odd, but it matches the default behavior of
- * gtar.  In particular, 'a*b' will match 'foo/a1111/222b/bar'
- *
- */
 static int
 match_path_exclusion(struct archive_match *a, struct match *m,
     int mbs, const void *pn)
 {
-	int flag = PATHMATCH_NO_ANCHOR_START | PATHMATCH_NO_ANCHOR_END;
-	int r;
+	int flag;
 
-	if (mbs) {
-		const char *p;
-		r = archive_mstring_get_mbs(&(a->archive), &(m->pattern), &p);
-		if (r == 0)
-			return (archive_pathmatch(p, (const char *)pn, flag));
+	if (a->logic == ARCHIVE_MATCH_LOGIC_DEFAULT) {
+		/*
+		 * This is a little odd, but it matches the default behavior of
+		 * gtar.  In particular, 'a*b' will match 'foo/a1111/222b/bar'
+		 *
+		 */
+		flag = PATHMATCH_NO_ANCHOR_START | PATHMATCH_NO_ANCHOR_END;
 	} else {
-		const wchar_t *p;
-		r = archive_mstring_get_wcs(&(a->archive), &(m->pattern), &p);
-		if (r == 0)
-			return (archive_pathmatch_w(p, (const wchar_t *)pn,
-				flag));
+		flag = 0;
 	}
-	if (errno == ENOMEM)
-		return (error_nomem(a));
-	return (0);
+
+	return match_path(a, m, mbs, pn, flag);
 }
 
-/*
- * Again, mimic gtar:  inclusions are always anchored (have to match
- * the beginning of the path) even though exclusions are not anchored.
- */
 static int
 match_path_inclusion(struct archive_match *a, struct match *m,
     int mbs, const void *pn)
 {
-	int flag = PATHMATCH_NO_ANCHOR_END;
+	int flag;
+
+	if (a->logic == ARCHIVE_MATCH_LOGIC_DEFAULT) {
+		/*
+		 * Again, mimic gtar: inclusions are always anchored (have to
+		 * match the beginning of the path) even though exclusions are
+		 * not anchored.
+		 */
+		flag = PATHMATCH_NO_ANCHOR_END;
+	} else {
+		flag = 0;
+	}
+
+	return match_path(a, m, mbs, pn, flag);
+}
+
+static int
+match_path(struct archive_match *a, struct match *m,
+    int mbs, const void *pn, int flag)
+{
 	int r;
 
 	if (mbs) {
 		const char *p;
 		r = archive_mstring_get_mbs(&(a->archive), &(m->pattern), &p);
 		if (r == 0)
-			return (archive_pathmatch(p, (const char *)pn, flag));
+			r = (a->match_path_cb)(p, (const char *)pn, flag);
 	} else {
 		const wchar_t *p;
 		r = archive_mstring_get_wcs(&(a->archive), &(m->pattern), &p);
 		if (r == 0)
-			return (archive_pathmatch_w(p, (const wchar_t *)pn,
-				flag));
+			r = (a->match_path_w_cb)(p, (const wchar_t *)pn,
+				flag);
 	}
-	if (errno == ENOMEM)
-		return (error_nomem(a));
-	return (0);
+
+	if (r < 0) {
+		archive_set_error(&(a->archive), errno, "%s", strerror(errno));
+		a->archive.state = ARCHIVE_STATE_FATAL;
+	}
+
+	return r;
 }
 
 static void
@@ -1288,7 +1374,7 @@ cmp_node_mbs(const struct archive_rb_node *n1,
 		return (-1);
 	return (strcmp(p1, p2));
 }
-        
+
 static int
 cmp_key_mbs(const struct archive_rb_node *n, const void *key)
 {
@@ -1317,7 +1403,7 @@ cmp_node_wcs(const struct archive_rb_node *n1,
 		return (-1);
 	return (wcscmp(p1, p2));
 }
-        
+
 static int
 cmp_key_wcs(const struct archive_rb_node *n, const void *key)
 {
