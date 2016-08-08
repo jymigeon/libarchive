@@ -44,6 +44,8 @@ SET(libarchive_SOURCES
   archive_pack_dev.c
   archive_pathmatch.c
   archive_pathmatch.h
+  archive_pathfnmatch.c
+  archive_pathfnmatch.h
   archive_platform.h
   archive_ppmd_private.h
   archive_ppmd7.c
