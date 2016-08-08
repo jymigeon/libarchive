@@ -55,8 +55,10 @@ __archive_mtree_pathmatch(const char *p, const char *s, int flags)
 
 	if (r == 0)
 		return 1; /* the pattern matches */
+	if (r == FNM_NOMATCH)
+		return 0;
 
-	return 0;
+	return -1;
 }
 
 int
@@ -64,6 +66,10 @@ __archive_mtree_pathmatch_w(const wchar_t *p, const wchar_t *s, int flags)
 {
 
 	/* not implemented */
+	(void)p;
+	(void)s;
+	(void)flags;
+
 	errno = ENOSYS;
 	return -1;
 }

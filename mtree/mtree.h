@@ -30,12 +30,12 @@
 
 #define DEFAULT_BYTES_PER_BLOCK (64*1024)
 
-/* array of archive_strings */
+/* array of strings */
 typedef struct {
-	struct archive_string *list;
+	char *list;
 	int count;
 } slist_t;
-void	list_insert(slist_t *, struct archive_string *);
+void	list_insert(slist_t *, char *);
 void	list_free(slist_t *);
 
 enum flavor {
@@ -107,7 +107,7 @@ struct mtree {
 	char *buf; /* buffer for cksum/hash computation */
 	size_t buf_size; /* size of buf */
 
-	struct archive_string fullpath;
+	char *fullpath;
 };
 
 #define MISMATCHEXIT 2

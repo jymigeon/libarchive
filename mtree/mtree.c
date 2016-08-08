@@ -42,7 +42,6 @@ __RCSID("$FreeBSD$");
 #include <sys/stat.h>
 
 #include "err.h"
-#include "archive_string.h"
 #include "mtree.h"
 #include "util.h"
 
@@ -55,7 +54,6 @@ static struct {
 	{F_NETBSD6, "netbsd6"},
 };
 
- 
 static int	check_excludes(struct archive_entry *, struct mtree *);
 static int	mtree_archive_read_disk_create(struct mtree *);
 static int	mtree_archive_read_disk_destroy(struct mtree *);
@@ -73,6 +71,7 @@ int main(int argc, char **argv)
 {
 	int ch, status;
 	unsigned int i;
+	long psz;
 	char *p;
 
 	struct mtree _mtree; /* Stack allocation. */
@@ -83,12 +82,12 @@ int main(int argc, char **argv)
 	memset(mt, 0, sizeof(*mt));
 	mt->symlink_mode = 'P'; /* 'P'hysical */
 	mt->spec1 = stdin;
-	archive_string_init(&mt->fullpath);
 
 	/* Set lafe_progname before calling lafe_warnc. */
 	lafe_setprogname(*argv, "mtree");
 
-	if (archive_string_ensure(&mt->fullpath, PATH_MAX) == NULL)
+	psz = pathconf(".", _PC_PATH_MAX);
+	if ((mt->fullpath = malloc((size_t)psz)) == NULL)
 		lafe_errc(1, 0, "Failed to allocated archive object");
 
 	if ((mt->writer = archive_write_new()) == NULL)
@@ -322,11 +321,9 @@ int main(int argc, char **argv)
 		lafe_errc(1, errno,
 		    "Failed to chdir() to %s", mt->dir);
 
-	if ((mt->cflag || mt->sflag)
-	    && !getcwd(mt->fullpath.s, mt->fullpath.buffer_length))
+	if ((mt->cflag || mt->sflag) && getcwd(mt->fullpath, psz) == NULL)
 		lafe_errc(1, errno,
-		    "Failed to getcwd() for %s", mt->fullpath.s);
-	mt->fullpath.length = strlen(mt->fullpath.s);
+		    "Failed to getcwd() for %s", mt->fullpath);
 
 #if 0 // XXX JYM see if this is really needed with libarchive
 	if ((mt->cflag && mt->Cflag)
@@ -387,7 +384,7 @@ int main(int argc, char **argv)
 
 		mtree_set_option(mt->writer, "header-user", user);
 		mtree_set_option(mt->writer, "header-machine", host);
-		mtree_set_option(mt->writer, "header-tree", mt->fullpath.s);
+		mtree_set_option(mt->writer, "header-tree", mt->fullpath);
 		mtree_set_option(mt->writer, "header-date", ctime(&clocktime));
 	}
 
@@ -465,7 +462,7 @@ int main(int argc, char **argv)
 	archive_write_close(mt->writer);
 	archive_write_free(mt->writer);
 	archive_match_free(mt->match);
-	archive_string_free(&mt->fullpath);
+	free(mt->fullpath);
 	list_free(&mt->excludetags);
 	list_free(&mt->includetags);
 	list_free(&mt->excludes);

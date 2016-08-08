@@ -49,7 +49,7 @@ __RCSID("$NetBSD: only.c,v 1.2 2013/02/05 00:59:03 christos Exp $");
 #include <time.h>
 
 #include "err.h"
-#include "mtree_platform.h"
+#include "mtree.h"
 #include "util.h"
 
 struct hentry {
