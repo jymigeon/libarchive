@@ -83,7 +83,7 @@ struct mtree_option {
 struct mtree_entry {
 	struct mtree_entry *next;
 	struct mtree_option *options;
-	char *name;
+	struct archive_string name;
 	char full;
 	char used;
 };
@@ -251,7 +251,7 @@ cleanup(struct archive_read *a)
 	p = mtree->entries;
 	while (p != NULL) {
 		q = p->next;
-		free(p->name);
+		archive_string_free(p->name);
 		free_options(p->options);
 		free(p);
 		p = q;
@@ -871,7 +871,7 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 	}
 	entry->next = NULL;
 	entry->options = NULL;
-	entry->name = NULL;
+	archive_string_init(&entry->name);
 	entry->used = 0;
 	entry->full = 0;
 
@@ -923,9 +923,8 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 		return (ARCHIVE_FATAL);
 	}
 
-	memcpy(entry->name, name, name_len);
-	entry->name[name_len] = '\0';
-	parse_escapes(entry->name, entry);
+	archive_strncat(&entry->name, name, name_len);
+	entry->name.length = parse_escapes(entry->name.s, entry);
 
 	for (iter = *global; iter != NULL; iter = iter->next) {
 		r = add_option(a, &entry->options, iter->value,
@@ -1056,7 +1055,7 @@ read_header(struct archive_read *a, struct archive_entry *entry)
 	for (;;) {
 		if (mtree->this_entry == NULL)
 			return (ARCHIVE_EOF);
-		if (strcmp(mtree->this_entry->name, "..") == 0) {
+		if (strcmp(mtree->this_entry->name.s, "..") == 0) {
 			mtree->this_entry->used = 1;
 			if (archive_strlen(&mtree->current_dir) > 0) {
 				/* Roll back current path. */
@@ -1108,7 +1107,7 @@ parse_file(struct archive_read *a, struct archive_entry *entry,
 	r = parse_line(a, entry, mtree, mentry, &parsed_kws);
 
 	if (mentry->full) {
-		archive_entry_copy_pathname(entry, mentry->name);
+		archive_entry_copy_pathname(entry, mentry->name.s);
 		/*
 		 * "Full" entries are allowed to have multiple lines
 		 * and those lines aren't required to be adjacent.  We
@@ -1121,7 +1120,7 @@ parse_file(struct archive_read *a, struct archive_entry *entry,
 		 */
 		for (mp = mentry->next; mp != NULL; mp = mp->next) {
 			if (mp->full && !mp->used
-			    && strcmp(mentry->name, mp->name) == 0) {
+			    && strcmp(mentry->name.s, mp->name) == 0) {
 				/* Later lines override earlier ones. */
 				mp->used = 1;
 				r1 = parse_line(a, entry, mtree, mp,
@@ -1138,8 +1137,8 @@ parse_file(struct archive_read *a, struct archive_entry *entry,
 		 */
 		size_t n = archive_strlen(&mtree->current_dir);
 		if (n > 0)
-			archive_strcat(&mtree->current_dir, "/");
-		archive_strcat(&mtree->current_dir, mentry->name);
+			archive_strncat(&mtree->current_dir, "/", n);
+		archive_string_concat(&mtree->current_dir, &mentry->name);
 		archive_entry_copy_pathname(entry, mtree->current_dir.s);
 		if (archive_entry_filetype(entry) != AE_IFDIR)
 			mtree->current_dir.length = n;
