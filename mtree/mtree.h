@@ -32,7 +32,7 @@
 
 /* array of strings */
 typedef struct {
-	char *list;
+	char **list;
 	int count;
 } slist_t;
 void	list_insert(slist_t *, char *);

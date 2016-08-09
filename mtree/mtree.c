@@ -498,7 +498,6 @@ mtree_read_excludes_file(slist_t *list, const char *name)
 	FILE *fp;
 	char *line;
 	size_t len;
-	struct archive_string e;
 
 	fp = fopen(name, "r");
 	if (fp == NULL)
@@ -513,10 +512,7 @@ mtree_read_excludes_file(slist_t *list, const char *name)
 			continue;
 		}
 
-		archive_string_init(&e);
-		archive_strncat(&e, line, len);
-		list_insert(list, &e);
-		free(line);
+		list_insert(list, line);
 	}
 	fclose(fp);
 }
@@ -535,7 +531,7 @@ check_excludes(struct archive_entry *entry, struct mtree *mt)
 	s = archive_entry_pathname(entry);
 	excludes = &mt->excludes;
 	for (i = 0; i < excludes->count; i++) {
-		p = excludes->list[i].s;
+		p = excludes->list[i];
 		/*
 		 * Might be interesting to cache the '/' lookup in pattern for
 		 * subsequent calls to that function
@@ -554,9 +550,9 @@ check_excludes(struct archive_entry *entry, struct mtree *mt)
 }
 
 void
-list_insert(slist_t *list, struct archive_string *elem)
+list_insert(slist_t *list, char *elem)
 {
-	struct archive_string *new;
+	char **new;
 
 #define TAG_CHUNK 20
 	if ((list->count % TAG_CHUNK) == 0) {
@@ -566,7 +562,7 @@ list_insert(slist_t *list, struct archive_string *elem)
 			lafe_errc(1, 0, "could not allocate memory for tags");
 		list->list = new;
 	}
-	list->list[list->count] = *elem;
+	list->list[list->count] = elem;
 	list->count++;
 #undef TAG_CHUNK
 }
@@ -575,8 +571,8 @@ list_insert(slist_t *list, struct archive_string *elem)
 static void
 parsetags(slist_t *list, char *args)
 {
-	char *p;
-	struct archive_string e;
+	size_t len;
+	char *p, *e;
 
 	if (args == NULL) {
 		list_insert(list, NULL);
@@ -585,9 +581,12 @@ parsetags(slist_t *list, char *args)
 	while ((p = strsep(&args, ",")) != NULL) {
 		if (*p == '\0')
 			continue;
-		archive_string_init(&e);
-		archive_strncat(&e, p, strlen(p) + 3); /* "," + p + ",\0" */
-		list_insert(list, &e);
+		len = strlen(p) + 3;
+		if ((e = malloc(len)) == NULL) {
+			lafe_errc(1, 0, "could not allocate memory for tags");
+		}
+		snprintf(e, len, ",%s,", p);
+		list_insert(list, e);
 	}
 }
 
@@ -598,10 +597,11 @@ list_free(slist_t *list)
 	int i;
 
 	for (i = 0; i < list->count; i++) {
-		archive_string_free(&list->list[i]);
+		free(list->list[i]);
 	}
 
 	free(list->list);
+	list->count = 0;
 }
 
 /*
