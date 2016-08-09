@@ -1413,7 +1413,8 @@ parse_device(dev_t *pdev, struct archive *a, char *val)
 }
 
 /*
- * Parse a single keyword and its value.
+ * Parse a single keyword and its value. These can be an option or
+ * a key=value pair.
  */
 static int
 parse_keyword(struct archive_read *a, struct mtree *mtree,
@@ -1426,6 +1427,7 @@ parse_keyword(struct archive_read *a, struct mtree *mtree,
 	if (*key == '\0')
 		return (ARCHIVE_OK);
 
+	/* First, see if it is an option. */
 	if (strcmp(key, "nochange") == 0) {
 		*parsed_kws |= MTREE_HAS_NOCHANGE;
 		return (ARCHIVE_OK);
@@ -1443,6 +1445,7 @@ parse_keyword(struct archive_read *a, struct mtree *mtree,
 		return (ARCHIVE_OK);
 	}
 
+	/* Second, try extracting an attribute, e.g. a key=value pair. */
 	val = strchr(key, '=');
 	if (val == NULL) {
 		archive_set_error(&a->archive, ARCHIVE_ERRNO_FILE_FORMAT,
