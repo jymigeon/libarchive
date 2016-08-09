@@ -113,7 +113,7 @@ static int	detect_form(struct archive_read *, int *);
 static int	mtree_bid(struct archive_read *, int);
 static int	parse_file(struct archive_read *, struct archive_entry *,
 		    struct mtree *, struct mtree_entry *, int *);
-static void	parse_escapes(char *, struct mtree_entry *);
+static size_t	parse_escapes(char *, struct mtree_entry *);
 static int	parse_line(struct archive_read *, struct archive_entry *,
 		    struct mtree *, struct mtree_entry *, int *);
 static int	parse_keyword(struct archive_read *, struct mtree *,
@@ -1718,9 +1718,10 @@ skip(struct archive_read *a)
  * Since parsing backslash sequences always makes strings shorter,
  * we can always do this conversion in-place.
  */
-static void
+static size_t
 parse_escapes(char *src, struct mtree_entry *mentry)
 {
+	char *save = src;
 	char *dest = src;
 	char c;
 
@@ -1792,6 +1793,7 @@ parse_escapes(char *src, struct mtree_entry *mentry)
 		*dest++ = c;
 	}
 	*dest = '\0';
+	return dest - save;
 }
 
 /*
