@@ -184,7 +184,7 @@ archive_read_format_mtree_options(struct archive_read *a,
 {
 	struct mtree *mtree;
 
-	mtree = (struct mtree *)(a->format->data);
+	mtree = a->format->data;
 	if (strcmp(key, "checkfs")  == 0) {
 		/* Allows to read information missing from the mtree from the file system */
 		if (val == NULL || val[0] == 0) {
@@ -223,7 +223,7 @@ archive_read_support_format_mtree(struct archive *_a)
 	archive_check_magic(_a, ARCHIVE_READ_MAGIC,
 	    ARCHIVE_STATE_NEW, "archive_read_support_format_mtree");
 
-	mtree = (struct mtree *)malloc(sizeof(*mtree));
+	mtree = malloc(sizeof(*mtree));
 	if (mtree == NULL) {
 		archive_set_error(&a->archive, ENOMEM,
 		    "Can't allocate mtree data");
@@ -246,7 +246,7 @@ cleanup(struct archive_read *a)
 	struct mtree *mtree;
 	struct mtree_entry *p, *q;
 
-	mtree = (struct mtree *)(a->format->data);
+	mtree = a->format->data;
 
 	p = mtree->entries;
 	while (p != NULL) {
@@ -1026,7 +1026,7 @@ read_header(struct archive_read *a, struct archive_entry *entry)
 	char *p;
 	int r, use_next;
 
-	mtree = (struct mtree *)(a->format->data);
+	mtree = a->format->data;
 
 	if (mtree->fd >= 0) {
 		close(mtree->fd);
@@ -1663,7 +1663,7 @@ read_data(struct archive_read *a, const void **buff, size_t *size,
 	ssize_t bytes_read;
 	struct mtree *mtree;
 
-	mtree = (struct mtree *)(a->format->data);
+	mtree = a->format->data;
 	if (mtree->fd < 0) {
 		*buff = NULL;
 		*offset = 0;
@@ -1706,7 +1706,7 @@ skip(struct archive_read *a)
 {
 	struct mtree *mtree;
 
-	mtree = (struct mtree *)(a->format->data);
+	mtree = a->format->data;
 	if (mtree->fd >= 0) {
 		close(mtree->fd);
 		mtree->fd = -1;
