@@ -25,6 +25,11 @@ IF(ENABLE_MTREE)
     SET(mtree_SOURCES ${mtree_SOURCES} fparseln.c)
   ENDIF(NOT HAVE_FPARSELN)
 
+  # Include strsep() if the system does not provide it
+  IF(NOT HAVE_STRSEP)
+    SET(mtree_SOURCES ${mtree_SOURCES} strsep.c)
+  ENDIF(NOT HAVE_STRSEP)
+
   # Only add the user/group parsing functions when pwcache routines are
   # supported
   IF(HAVE_PWCACHE)

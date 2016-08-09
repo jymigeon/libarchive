@@ -893,6 +893,9 @@ typedef uint64_t uintmax_t;
 /* Define to 1 if you have the `strrchr' function. */
 #cmakedefine HAVE_STRRCHR 1
 
+/* Define to 1 if you have the `strsep' function. */
+#cmakedefine HAVE_STRSEP 1
+
 /* Define to 1 if `f_namemax' is a member of `struct statfs'. */
 #cmakedefine HAVE_STRUCT_STATFS_F_NAMEMAX 1
 

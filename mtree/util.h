@@ -43,4 +43,8 @@ char *fparseln(FILE *, size_t *, size_t *, const char delim[3], int);
 char *fgetln(FILE *, size_t *);
 #endif
 
+#ifndef HAVE_STRSEP
+char strsep(char **, const char *);
+#endif
+
 #endif /* _MTREE_UTIL_H_INCLUDED */
