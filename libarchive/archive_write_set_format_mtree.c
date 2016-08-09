@@ -1446,7 +1446,7 @@ archive_write_set_format_mtree_classic(struct archive *_a)
 		struct archive_write *a = (struct archive_write *)_a;
 		struct mtree_writer *mtree;
 
-		mtree = (struct mtree_writer *)a->format_data;
+		mtree = a->format_data;
 
 		/* Set to output a mtree archive in classic format. */
 		mtree->classic = 1;
@@ -2004,7 +2004,7 @@ mtree_entry_tree_add(struct archive_write *a, struct mtree_entry **filep)
 #else
 	char name[256];
 #endif
-	struct mtree_writer *mtree = (struct mtree_writer *)a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 	struct mtree_entry *dent, *file, *np;
 	const char *fn, *p;
 	int l, r;
