@@ -82,6 +82,7 @@ struct dir_info {
 struct reg_info {
 	int compute_sum;
 	uint32_t crc;
+	struct archive_string sbuf; /* buffer for the ASCII output of hashes */
 #ifdef ARCHIVE_HAS_MD5
 	unsigned char buf_md5[16];
 #endif
@@ -858,6 +859,7 @@ mtree_entry_new(struct archive_write *a, struct archive_entry *entry,
 			return (ARCHIVE_FATAL);
 		}
 		me->reg_info->compute_sum = 0;
+		archive_string_init(&me->reg_info->sbuf);
 	}
 
 	*m_entry = me;
@@ -875,6 +877,8 @@ mtree_entry_free(struct mtree_entry *me)
 	archive_string_free(&me->gname);
 	archive_string_free(&me->fflags_text);
 	free(me->dir_info);
+	if (me->reg_info != NULL)
+		archive_string_free(&me->reg_info->sbuf);
 	free(me->reg_info);
 	free(me);
 }
@@ -1601,11 +1605,12 @@ sum_final(struct mtree_writer *mtree, struct reg_info *reg)
     defined(ARCHIVE_HAS_SHA1) || defined(ARCHIVE_HAS_SHA256) || \
     defined(ARCHIVE_HAS_SHA384) || defined(ARCHIVE_HAS_SHA512)
 static void
-strappend_bin(struct archive_string *s, const unsigned char *bin, int n)
+mtree_quote_sum(struct archive_string *s, const unsigned char *bin, int n)
 {
 	static const char hex[] = "0123456789abcdef";
 	int i;
 
+	archive_string_empty(s);
 	for (i = 0; i < n; i++) {
 		archive_strappend_char(s, hex[bin[i] >> 4]);
 		archive_strappend_char(s, hex[bin[i] & 0x0f]);
@@ -1616,6 +1621,7 @@ strappend_bin(struct archive_string *s, const unsigned char *bin, int n)
 static void
 sum_write(struct archive_string *str, struct reg_info *reg)
 {
+	struct archive_string *sbuf = &reg->sbuf;
 
 	if (reg->compute_sum & F_CKSUM) {
 		archive_string_sprintf(str, " cksum=%ju",
@@ -1624,37 +1630,37 @@ sum_write(struct archive_string *str, struct reg_info *reg)
 #ifdef ARCHIVE_HAS_MD5
 	if (reg->compute_sum & F_MD5) {
 		archive_strcat(str, " md5digest=");
-		strappend_bin(str, reg->buf_md5, sizeof(reg->buf_md5));
+		mtree_quote_sum(sbuf, reg->buf_md5, sizeof(reg->buf_md5));
 	}
 #endif
 #ifdef ARCHIVE_HAS_RMD160
 	if (reg->compute_sum & F_RMD160) {
 		archive_strcat(str, " rmd160digest=");
-		strappend_bin(str, reg->buf_rmd160, sizeof(reg->buf_rmd160));
+		mtree_quote_sum(sbuf, reg->buf_rmd160, sizeof(reg->buf_rmd160));
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA1
 	if (reg->compute_sum & F_SHA1) {
 		archive_strcat(str, " sha1digest=");
-		strappend_bin(str, reg->buf_sha1, sizeof(reg->buf_sha1));
+		mtree_quote_sum(sbuf, reg->buf_sha1, sizeof(reg->buf_sha1));
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA256
 	if (reg->compute_sum & F_SHA256) {
 		archive_strcat(str, " sha256digest=");
-		strappend_bin(str, reg->buf_sha256, sizeof(reg->buf_sha256));
+		mtree_quote_sum(sbuf, reg->buf_sha256, sizeof(reg->buf_sha256));
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA384
 	if (reg->compute_sum & F_SHA384) {
 		archive_strcat(str, " sha384digest=");
-		strappend_bin(str, reg->buf_sha384, sizeof(reg->buf_sha384));
+		mtree_quote_sum(sbuf, reg->buf_sha384, sizeof(reg->buf_sha384));
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA512
 	if (reg->compute_sum & F_SHA512) {
 		archive_strcat(str, " sha512digest=");
-		strappend_bin(str, reg->buf_sha512, sizeof(reg->buf_sha512));
+		mtree_quote_sum(sbuf, reg->buf_sha512, sizeof(reg->buf_sha512));
 	}
 #endif
 }
