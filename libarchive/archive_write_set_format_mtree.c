@@ -897,7 +897,7 @@ static int
 archive_write_mtree_header(struct archive_write *a,
     struct archive_entry *entry)
 {
-	struct mtree_writer *mtree= a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 	struct mtree_entry *mtree_entry;
 	int r, r2;
 
@@ -1247,7 +1247,7 @@ archive_write_mtree_finish_entry(struct archive_write *a)
 static int
 archive_write_mtree_close(struct archive_write *a)
 {
-	struct mtree_writer *mtree= a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 	int ret;
 
 	if (mtree->root != NULL) {
@@ -1264,7 +1264,7 @@ archive_write_mtree_close(struct archive_write *a)
 static ssize_t
 archive_write_mtree_data(struct archive_write *a, const void *buff, size_t n)
 {
-	struct mtree_writer *mtree= a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 
 	if (n > mtree->entry_bytes_remaining)
 		n = (size_t)mtree->entry_bytes_remaining;
@@ -1283,7 +1283,7 @@ archive_write_mtree_data(struct archive_write *a, const void *buff, size_t n)
 static int
 archive_write_mtree_free(struct archive_write *a)
 {
-	struct mtree_writer *mtree= a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 
 	if (mtree == NULL)
 		return (ARCHIVE_OK);
@@ -1303,7 +1303,7 @@ static int
 archive_write_mtree_options(struct archive_write *a, const char *key,
     const char *value)
 {
-	struct mtree_writer *mtree= a->format_data;
+	struct mtree_writer *mtree = a->format_data;
 	int keybit = 0;
 
 	switch (key[0]) {
