@@ -972,18 +972,16 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 	int keys, ret;
 
 	if (me->dir_info) {
-		if (mtree->classic) {
+		if (mtree->comments != 0) {
 			/*
 			 * Output a comment line to describe the full
-			 * pathname of the entry as mtree utility does
-			 * while generating classic format.
+			 * pathname of the entry as legacy mtree utility
+			 * does while generating classic format.
 			 */
-			if (!mtree->dironly)
-				archive_strappend_char(&mtree->buf, '\n');
 			if (me->parentdir.s)
 				archive_string_sprintf(&mtree->buf,
-				    "# %s/%s\n",
-				    me->parentdir.s, me->basename.s);
+				    "# %s/%s\n", me->parentdir.s,
+				    me->basename.s);
 			else
 				archive_string_sprintf(&mtree->buf,
 				    "# %s\n",
