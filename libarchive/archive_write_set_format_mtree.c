@@ -531,8 +531,8 @@ write_global(struct mtree_writer *mtree)
 	}
 	if ((keys & effkeys & F_UNAME) != 0) {
 		if (archive_strlen(&(acs->uid_list->m_entry->uname)) > 0) {
-			archive_strcat(&setstr, " uname=");
-			mtree_quote(&setstr, acs->uid_list->m_entry->uname.s);
+			archive_string_sprintf(&setstr, " uname=%s",
+			    acs->uid_list->m_entry->uname.s);
 		} else {
 			keys &= ~F_UNAME;
 			if ((oldkeys & F_UNAME) != 0)
@@ -546,8 +546,8 @@ write_global(struct mtree_writer *mtree)
 	}
 	if ((keys & effkeys & F_GNAME) != 0) {
 		if (archive_strlen(&(acs->gid_list->m_entry->gname)) > 0) {
-			archive_strcat(&setstr, " gname=");
-			mtree_quote(&setstr, acs->gid_list->m_entry->gname.s);
+			archive_string_sprintf(&setstr, " gname=%s",
+			    acs->gid_list->m_entry->gname.s);
 		} else {
 			keys &= ~F_GNAME;
 			if ((oldkeys & F_GNAME) != 0)
@@ -567,8 +567,7 @@ write_global(struct mtree_writer *mtree)
 	if ((keys & effkeys & F_FLAGS) != 0) {
 		if (archive_strlen(
 		    &(acs->flags_list->m_entry->fflags_text)) > 0) {
-			archive_strcat(&setstr, " flags=");
-			mtree_quote(&setstr,
+			archive_string_sprintf(&setstr, " flags=%s",
 			    acs->flags_list->m_entry->fflags_text.s);
 			mtree->set.fflags_set =
 			    acs->flags_list->m_entry->fflags_set;
