@@ -862,7 +862,7 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 	struct mtree_entry *entry;
 	struct mtree_option *iter;
 	const char *next, *eq, *name, *end;
-	size_t name_len, len;
+	size_t len;
 	int r, i;
 
 	if ((entry = malloc(sizeof(*entry))) == NULL) {
@@ -906,24 +906,24 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 				name = line + i + 1;
 			}
 		}
-		name_len = line + line_len - name;
+		len = line + line_len - name;
 		end = name;
 	} else {
 		/* Filename is first item on line */
-		name_len = strcspn(line, " \t\r\n");
+		len = strcspn(line, " \t\r\n");
 		name = line;
-		line += name_len;
+		line += len;
 		end = line + line_len;
 	}
 	/* name/name_len is the name within the line. */
 	/* line..end brackets the entire line except the name */
 
-	if ((entry->name = malloc(name_len + 1)) == NULL) {
+	if ((entry->name = malloc(len + 1)) == NULL) {
 		archive_set_error(&a->archive, errno, "Can't allocate memory");
 		return (ARCHIVE_FATAL);
 	}
 
-	archive_strncat(&entry->name, name, name_len);
+	archive_strncat(&entry->name, name, len);
 	entry->name.length = parse_escapes(entry->name.s, entry);
 
 	for (iter = *global; iter != NULL; iter = iter->next) {
