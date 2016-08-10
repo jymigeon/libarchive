@@ -254,7 +254,7 @@ cleanup(struct archive_read *a)
 	p = mtree->root;
 	while (p != NULL) {
 		q = p->next;
-		archive_string_free(p->name);
+		archive_string_free(&p->name);
 		free_options(p->options);
 		free(p);
 		p = q;
@@ -1116,7 +1116,7 @@ parse_file(struct archive_read *a, struct archive_entry *entry,
 		 */
 		for (mp = mentry->next; mp != NULL; mp = mp->next) {
 			if (mp->full && !mp->used
-			    && strcmp(mentry->name.s, mp->name) == 0) {
+			    && strcmp(mentry->name.s, mp->name.s) == 0) {
 				/* Later lines override earlier ones. */
 				mp->used = 1;
 				r1 = parse_line(a, entry, mtree, mp,
