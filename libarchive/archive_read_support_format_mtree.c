@@ -874,6 +874,7 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 	}
 	entry->next = NULL;
 	entry->options = NULL;
+	entry->parent = NULL;
 	archive_string_init(&entry->name);
 	entry->used = 0;
 	entry->full = 0;
