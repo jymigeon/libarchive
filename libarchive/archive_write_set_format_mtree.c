@@ -225,6 +225,8 @@ struct mtree_writer {
 	int output_global_set;	/* If it is set, use /set keyword to set
 				 * global values. When generating mtree
 				 * classic format, it is set by default. */
+	int pathlast;		/* If it is set, the path will be printed
+				   as the last element of the entry. */
 };
 
 #define DEFAULT_KEYS	(F_DEV | F_FLAGS | F_GID | F_GNAME | F_SLINK | F_MODE\
@@ -257,11 +259,13 @@ static void mtree_entry_register_free(struct mtree_writer *);
 static void mtree_entry_register_init(struct mtree_writer *);
 static int mtree_entry_setup_filenames(struct archive_write *,
 	struct mtree_entry *, struct archive_entry *);
+static void mtree_entry_append_key(struct archive_string *, int,
+	const char *, ...);
 static int mtree_entry_tree_add(struct archive_write *, struct mtree_entry **);
 static void sum_init(struct mtree_writer *);
 static void sum_update(struct mtree_writer *, const void *, size_t);
 static void sum_final(struct mtree_writer *, struct reg_info *);
-static void sum_write(struct archive_string *, struct reg_info *);
+static void sum_write(struct archive_string *, struct reg_info *, int);
 static int write_mtree_entry(struct archive_write *, struct mtree_entry *);
 static int write_dot_dot_entry(struct archive_write *, struct mtree_entry *);
 
@@ -815,18 +819,18 @@ mtree_entry_new(struct archive_write *a, struct archive_entry *entry,
 	}
 
 	if ((s = archive_entry_symlink(entry)) != NULL)
-		archive_strcpy(&me->symlink, s);
+		mtree_quote(&me->symlink, s);
 	me->nlink = archive_entry_nlink(entry);
 	me->filetype = archive_entry_filetype(entry);
 	me->mode = archive_entry_mode(entry) & 07777;
 	me->uid = archive_entry_uid(entry);
 	me->gid = archive_entry_gid(entry);
 	if ((s = archive_entry_uname(entry)) != NULL)
-		archive_strcpy(&me->uname, s);
+		mtree_quote(&me->uname, s);
 	if ((s = archive_entry_gname(entry)) != NULL)
-		archive_strcpy(&me->gname, s);
+		mtree_quote(&me->gname, s);
 	if ((s = archive_entry_fflags_text(entry)) != NULL)
-		archive_strcpy(&me->fflags_text, s);
+		mtree_quote(&me->fflags_text, s);
 	archive_entry_fflags(entry, &me->fflags_set, &me->fflags_clear);
 	me->mtime = archive_entry_mtime(entry);
 	me->mtime_nsec = archive_entry_mtime_nsec(entry);
@@ -923,6 +927,32 @@ archive_write_mtree_header(struct archive_write *a,
 	return (r2);
 }
 
+static void
+mtree_entry_append_key(struct archive_string *str, int pathlast,
+    const char *fmt, ...)
+{
+	va_list ap;
+
+	/*
+	 * When the path is printed first, entries should be preceded
+	 * by a space to be separated.
+	 */
+	if (pathlast == 0)
+		archive_strappend_char(str, ' ');
+
+	va_start(ap, fmt);
+	archive_string_vsprintf(str, fmt, ap);
+	va_end(ap);
+
+	/*
+	 * When the path is printed last, entries should be followed
+	 * by a space to be separated.
+	 */
+	if (pathlast == 1)
+		archive_strappend_char(str, ' ');
+}
+
+
 static int
 write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 {
@@ -954,113 +984,96 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 	archive_string_empty(&mtree->ebuf);
 	str = (mtree->indent || mtree->classic)? &mtree->ebuf : &mtree->buf;
 
-	if (!mtree->classic && me->parentdir.s) {
-		/*
-		 * If generating format is not classic one(v1), output
-		 * a full pathname.
-		 */
-		mtree_quote(str, me->parentdir.s);
-		archive_strappend_char(str, '/');
+	if (mtree->pathlast == 0) {
+	        if (!mtree->classic && me->parentdir.s) {
+	                /*
+	                 * If generating format is not classic one (v1), output
+	                 * a full pathname.
+	                 */
+	                mtree_quote(str, me->parentdir.s);
+	                archive_strappend_char(str, '/');
+	        }
+	        mtree_quote(str, me->basename.s);
 	}
-	mtree_quote(str, me->basename.s);
 
 	keys = get_global_set_keys(mtree, me);
-	if ((keys & F_NLINK) != 0 &&
-	    me->nlink != 1 && me->filetype != AE_IFDIR)
-		archive_string_sprintf(str, " nlink=%u", me->nlink);
-
-	if ((keys & F_GNAME) != 0 && archive_strlen(&me->gname) > 0) {
-		archive_strcat(str, " gname=");
-		mtree_quote(str, me->gname.s);
-	}
-	if ((keys & F_UNAME) != 0 && archive_strlen(&me->uname) > 0) {
-		archive_strcat(str, " uname=");
-		mtree_quote(str, me->uname.s);
-	}
-	if ((keys & F_FLAGS) != 0) {
-		if (archive_strlen(&me->fflags_text) > 0) {
-			archive_strcat(str, " flags=");
-			mtree_quote(str, me->fflags_text.s);
-		} else if (mtree->set.processing &&
-		    (mtree->set.keys & F_FLAGS) != 0)
-			/* Overwrite the global parameter. */
-			archive_strcat(str, " flags=none");
-	}
-	if ((keys & F_TIME) != 0)
-		archive_string_sprintf(str, " time=%jd.%jd",
-		    (intmax_t)me->mtime, (intmax_t)me->mtime_nsec);
-	if ((keys & F_MODE) != 0)
-		archive_string_sprintf(str, " mode=%o", (unsigned int)me->mode);
-	if ((keys & F_GID) != 0)
-		archive_string_sprintf(str, " gid=%jd", (intmax_t)me->gid);
-	if ((keys & F_UID) != 0)
-		archive_string_sprintf(str, " uid=%jd", (intmax_t)me->uid);
-
-	if ((keys & F_INO) != 0)
-		archive_string_sprintf(str, " inode=%jd", (intmax_t)me->ino);
-	if ((keys & F_RESDEV) != 0) {
-		archive_string_sprintf(str,
-		    " resdevice=native,%ju,%ju",
-		    (uintmax_t)me->devmajor,
-		    (uintmax_t)me->devminor);
-	}
 
 	switch (me->filetype) {
 	case AE_IFLNK:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=link");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=link");
 		if ((keys & F_SLINK) != 0) {
-			archive_strcat(str, " link=");
-			mtree_quote(str, me->symlink.s);
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "link=%s", me->symlink.s);
 		}
 		break;
 	case AE_IFSOCK:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=socket");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=socket");
 		break;
 	case AE_IFCHR:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=char");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=char");
 		if ((keys & F_DEV) != 0) {
-			archive_string_sprintf(str,
-			    " device=native,%ju,%ju",
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "device=native,%ju,%ju",
 			    (uintmax_t)me->rdevmajor,
 			    (uintmax_t)me->rdevminor);
 		}
 		break;
 	case AE_IFBLK:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=block");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=block");
 		if ((keys & F_DEV) != 0) {
-			archive_string_sprintf(str,
-			    " device=native,%ju,%ju",
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "device=native,%ju,%ju",
 			    (uintmax_t)me->rdevmajor,
 			    (uintmax_t)me->rdevminor);
 		}
 		break;
 	case AE_IFDIR:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=dir");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=dir");
 		break;
 	case AE_IFIFO:
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=fifo");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=fifo");
 		break;
 	case AE_IFREG:
 	default:	/* Handle unknown file types as regular files. */
 		if ((keys & F_TYPE) != 0)
-			archive_strcat(str, " type=file");
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "type=file");
 		if ((keys & F_SIZE) != 0)
-			archive_string_sprintf(str, " size=%jd",
-			    (intmax_t)me->size);
+			mtree_entry_append_key(str, mtree->pathlast, 
+			    "size=%jd", (intmax_t)me->size);
 		break;
 	}
 
 	/* Write a bunch of sum. */
 	if (me->reg_info)
-		sum_write(str, me->reg_info);
+		sum_write(str, me->reg_info, mtree->pathlast);
+
+	if (mtree->pathlast == 1) {
+	        if (!mtree->classic && me->parentdir.s) {
+	                /*
+	                 * If generating format is not classic one(v1), output
+	                 * a full pathname.
+	                 */
+	                mtree_quote(str, me->parentdir.s);
+	                archive_strappend_char(str, '/');
+	        }
+	        mtree_quote(str, me->basename.s);
+	}
 
 	archive_strappend_char(str, '\n');
+
 	if (mtree->indent || mtree->classic)
 		mtree_indent(mtree);
 
@@ -1619,48 +1632,54 @@ mtree_quote_sum(struct archive_string *s, const unsigned char *bin, int n)
 #endif
 
 static void
-sum_write(struct archive_string *str, struct reg_info *reg)
+sum_write(struct archive_string *str, struct reg_info *reg, int pathlast)
 {
 	struct archive_string *sbuf = &reg->sbuf;
 
 	if (reg->compute_sum & F_CKSUM) {
-		archive_string_sprintf(str, " cksum=%ju",
-		    (uintmax_t)reg->crc);
+		mtree_entry_append_key(str, pathlast,
+		    "cksum=%ju", (uintmax_t)reg->crc);
 	}
 #ifdef ARCHIVE_HAS_MD5
 	if (reg->compute_sum & F_MD5) {
-		archive_strcat(str, " md5digest=");
 		mtree_quote_sum(sbuf, reg->buf_md5, sizeof(reg->buf_md5));
+		mtree_entry_append_key(str, pathlast,
+		    "md5digest=%s", sbuf->s);
 	}
 #endif
 #ifdef ARCHIVE_HAS_RMD160
 	if (reg->compute_sum & F_RMD160) {
-		archive_strcat(str, " rmd160digest=");
 		mtree_quote_sum(sbuf, reg->buf_rmd160, sizeof(reg->buf_rmd160));
+		mtree_entry_append_key(str, pathlast,
+		    "rmd160digest=%s", sbuf->s);
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA1
 	if (reg->compute_sum & F_SHA1) {
-		archive_strcat(str, " sha1digest=");
 		mtree_quote_sum(sbuf, reg->buf_sha1, sizeof(reg->buf_sha1));
+		mtree_entry_append_key(str, pathlast,
+		    "sha1digest=%s", sbuf->s);
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA256
 	if (reg->compute_sum & F_SHA256) {
-		archive_strcat(str, " sha256digest=");
 		mtree_quote_sum(sbuf, reg->buf_sha256, sizeof(reg->buf_sha256));
+		mtree_entry_append_key(str, pathlast,
+		    "sha256digest=%s", sbuf->s);
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA384
 	if (reg->compute_sum & F_SHA384) {
-		archive_strcat(str, " sha384digest=");
 		mtree_quote_sum(sbuf, reg->buf_sha384, sizeof(reg->buf_sha384));
+		mtree_entry_append_key(str, pathlast,
+		    "sha384digest=%s", sbuf->s);
 	}
 #endif
 #ifdef ARCHIVE_HAS_SHA512
 	if (reg->compute_sum & F_SHA512) {
-		archive_strcat(str, " sha512digest=");
 		mtree_quote_sum(sbuf, reg->buf_sha512, sizeof(reg->buf_sha512));
+		mtree_entry_append_key(str, pathlast,
+		    "sha512digest=%s", sbuf->s);
 	}
 #endif
 }
