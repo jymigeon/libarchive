@@ -233,6 +233,12 @@ struct mtree_writer {
 				 * classic format, it is set by default. */
 	int pathlast;		/* If it is set, the path will be printed
 				   as the last element of the entry. */
+
+	/* Header comments */
+	struct archive_string hdr_date;
+	struct archive_string hdr_machine;
+	struct archive_string hdr_tree;
+	struct archive_string hdr_user;
 };
 
 #define DEFAULT_KEYS	(F_DEV | F_FLAGS | F_GID | F_GNAME | F_SLINK | F_MODE\
@@ -908,7 +914,18 @@ archive_write_mtree_header(struct archive_write *a,
 
 	if (mtree->first) {
 		mtree->first = 0;
-		archive_strcat(&mtree->buf, "#mtree\n");
+		if (mtree->classic == 0) {
+			archive_string_sprintf(&mtree->buf, "#mtree v2.0\n");
+		}
+		if (mtree->comments == 1) {
+			archive_string_sprintf(&mtree->buf,
+			    "#\t   user: %s\n"
+			    "#\tmachine: %s\n"
+			    "#\t   tree: %s\n"
+			    "#\t   date: %s",
+			    mtree->hdr_user.s, mtree->hdr_machine.s,
+			    mtree->hdr_tree.s, mtree->hdr_date.s);
+		}
 		if ((mtree->keys & SET_KEYS) == 0)
 			mtree->output_global_set = 0;/* Disabled. */
 	}
@@ -1301,6 +1318,10 @@ archive_write_mtree_free(struct archive_write *a)
 	archive_string_free(&mtree->cur_dirstr);
 	archive_string_free(&mtree->ebuf);
 	archive_string_free(&mtree->buf);
+	archive_string_free(&mtree->hdr_date);
+	archive_string_free(&mtree->hdr_machine);
+	archive_string_free(&mtree->hdr_tree);
+	archive_string_free(&mtree->hdr_user);
 	attr_counter_set_free(mtree);
 	free(mtree);
 	a->format_data = NULL;
@@ -1349,6 +1370,31 @@ archive_write_mtree_options(struct archive_write *a, const char *key,
 			keybit = F_GID;
 		else if (strcmp(key, "gname") == 0)
 			keybit = F_GNAME;
+		break;
+	case 'h':
+#define _STR "header-"
+		if (strncmp(key, _STR, strlen(_STR)) == 0) {
+			value = (value == NULL) ? "" : value;
+			/* options that set the content of mtree's header */
+			if (strcmp(key + strlen(_STR), "user") == 0) {
+				archive_string_sprintf(&mtree->hdr_user,
+				    "%s", value);
+			}
+			if (strcmp(key + strlen(_STR), "machine") == 0) {
+				archive_string_sprintf(&mtree->hdr_machine,
+				    "%s", value);
+			}
+			if (strcmp(key + strlen(_STR), "tree") == 0) {
+				archive_string_sprintf(&mtree->hdr_tree,
+				    "%s", value);
+			}
+			if (strcmp(key + strlen(_STR), "date") == 0) {
+				archive_string_sprintf(&mtree->hdr_date,
+				    "%s", value);
+			}
+		return ARCHIVE_OK;
+		}
+#undef _STR
 		break;
 	case 'i':
 		if (strcmp(key, "indent") == 0) {
@@ -1454,8 +1500,13 @@ archive_write_set_format_mtree_default(struct archive *_a, const char *fn)
 	mtree->dironly = 0;
 	mtree->indent = 0;
 	mtree->output_dot_dot = 1;
+	archive_string_init(&mtree->cur_dirstr);
 	archive_string_init(&mtree->ebuf);
 	archive_string_init(&mtree->buf);
+	archive_string_free(&mtree->hdr_date);
+	archive_string_free(&mtree->hdr_machine);
+	archive_string_free(&mtree->hdr_tree);
+	archive_string_free(&mtree->hdr_user);
 	mtree_entry_register_init(mtree);
 	a->format_data = mtree;
 	a->format_free = archive_write_mtree_free;
