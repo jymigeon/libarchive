@@ -269,6 +269,12 @@ static void sum_write(struct archive_string *, struct reg_info *, int);
 static int write_mtree_entry(struct archive_write *, struct mtree_entry *);
 static int write_dot_dot_entry(struct archive_write *, struct mtree_entry *);
 
+/*
+ * mtree uses POSIX 1003.2 cksum as CRC (with 0x04c11db7 as polynom). Bits are
+ * not reflected so the CRC can differ between mtree's crc32() and
+ * zlib/libarchive crc32() that use the reflected polynom (0xedb88320).
+ * So we use mtree's original convention here.
+ */
 #define	COMPUTE_CRC(var, ch)	(var) = (var) << 8 ^ crctab[(var) >> 24 ^ (ch)]
 static const uint32_t crctab[] = {
 	0x0,
