@@ -1191,7 +1191,7 @@ write_mtree_entry_tree(struct archive_write *a)
 		} else if (mtree->classic) {
 			/*
 			 * While printing mtree classic, if there are not
-			 * any directory files(except "." and "..") in the
+			 * any directory files (except "." and "..") in the
 			 * directory, output two dots ".." as returning
 			 * the parent directory.
 			 */
@@ -1870,7 +1870,7 @@ mtree_entry_setup_filenames(struct archive_write *a, struct mtree_entry *file,
 	len = strlen(p);
 
 	/*
-	 * Add "./" prefiex.
+	 * Add "./" prefix.
 	 * NOTE: If the pathname does not have a path separator, we have
 	 * to add "./" to the head of the pathename because mtree reader
 	 * will suppose that it is v1(a.k.a classic) mtree format and
@@ -1987,7 +1987,7 @@ mtree_entry_add_child_tail(struct mtree_entry *parent,
 }
 
 /*
- * Find a entry from a parent entry with the name.
+ * Find ann entry from a parent entry with the name.
  */
 static struct mtree_entry *
 mtree_entry_find_child(struct mtree_entry *parent, const char *child_name)
@@ -2203,8 +2203,7 @@ mtree_entry_tree_add(struct archive_write *a, struct mtree_entry **filep)
 
 same_entry:
 	/*
-	 * We have already has the entry the filename of which is
-	 * the same.
+	 * We already have the same entry within the tree, update its content.
 	 */
 	r = mtree_entry_exchange_same_entry(a, np, file);
 	if (r < ARCHIVE_WARN)
