@@ -915,14 +915,6 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 		line += len;
 		end = line + line_len;
 	}
-	/* name/name_len is the name within the line. */
-	/* line..end brackets the entire line except the name */
-
-	if ((entry->name = malloc(len + 1)) == NULL) {
-		archive_set_error(&a->archive, errno, "Can't allocate memory");
-		return (ARCHIVE_FATAL);
-	}
-
 	archive_strncat(&entry->name, name, len);
 	entry->name.length = parse_escapes(entry->name.s, entry);
 
