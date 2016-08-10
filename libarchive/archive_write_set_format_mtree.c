@@ -1314,9 +1314,18 @@ archive_write_mtree_options(struct archive_write *a, const char *key,
 		if (strcmp(key, "all") == 0)
 			keybit = ~0;
 		break;
+	case 'b':
+		if (strcmp(key, "blanklines") == 0) {
+			mtree->blanklines = (value != NULL)? 1: 0;
+			return ARCHIVE_OK;
+		}
 	case 'c':
 		if (strcmp(key, "cksum") == 0)
 			keybit = F_CKSUM;
+		else if (strcmp(key, "comments") == 0) {
+			mtree->comments = (value != NULL)? 1: 0;
+			return ARCHIVE_OK;
+		}
 		break;
 	case 'd':
 		if (strcmp(key, "device") == 0)
@@ -1435,8 +1444,11 @@ archive_write_set_format_mtree_default(struct archive *_a, const char *fn)
 	mtree->first = 1;
 	memset(&(mtree->set), 0, sizeof(mtree->set));
 	mtree->keys = DEFAULT_KEYS;
+	mtree->blanklines = 1;
+	mtree->comments = 1;
 	mtree->dironly = 0;
 	mtree->indent = 0;
+	mtree->output_dot_dot = 1;
 	archive_string_init(&mtree->ebuf);
 	archive_string_init(&mtree->buf);
 	mtree_entry_register_init(mtree);
@@ -1454,33 +1466,95 @@ archive_write_set_format_mtree_default(struct archive *_a, const char *fn)
 	return (ARCHIVE_OK);
 }
 
+static int
+_archive_write_set_format_mtree(struct archive *_a, const char *format)
+{
+	int r;
+	struct archive_write *a;
+	struct mtree_writer *mtree;
+
+	r = archive_write_set_format_mtree_default(_a,
+		"_archive_write_set_format_mtree");
+	if (r != ARCHIVE_OK)
+		return r;
+
+	a = (struct archive_write *)_a;
+	mtree = a->format_data;
+
+	switch (format[0]) {
+	case 'c':
+		if (strcmp(format, "classic") == 0) {
+			/* Set to output a mtree archive in classic format. */
+			mtree->classic = 1;
+			/* Basically, mtree classic format uses '/set' global
+			 * value. */
+			mtree->output_global_set = 1;
+			return ARCHIVE_OK;
+		}
+		break;
+	case 'C':
+		if (strcmp(format, "C") == 0) {
+			mtree->blanklines = mtree->classic = 0;
+			mtree->comments = mtree->indent = 0;
+			mtree->output_dot_dot = mtree->output_global_set = 0;
+			mtree->pathlast = 0;
+			return ARCHIVE_OK;
+		}
+		break;
+	case 'd':
+		if (strcmp(format, "default") == 0) {
+			/* just asked for a default format */
+			return ARCHIVE_OK;
+		}
+		break;
+	case 'D':
+		if (strcmp(format, "D") == 0) {
+			mtree->blanklines = mtree->classic = 0;
+			mtree->comments = mtree->indent = 0;
+			mtree->output_dot_dot = mtree->output_global_set = 0;
+			mtree->pathlast = 1;
+			return ARCHIVE_OK;
+		}
+		break;
+	}
+
+	/*
+	 * This code will be triggered when the format submitted
+	 * internally by libarchive is invalid. Return a fatal error as this
+	 * cannot be fixed at this stage.
+	 */
+	archive_set_error(&a->archive, ARCHIVE_ERRNO_PROGRAMMER,
+	    "Internal programing error, "
+	    "format `%s' is not supported", format);
+	return ARCHIVE_FATAL;
+}
+
 int
 archive_write_set_format_mtree(struct archive *_a)
 {
-	return archive_write_set_format_mtree_default(_a,
-		"archive_write_set_format_mtree");
+
+	return _archive_write_set_format_mtree(_a, "default");
 }
 
 int
 archive_write_set_format_mtree_classic(struct archive *_a)
 {
-	int r;
 
-	r = archive_write_set_format_mtree_default(_a,
-		"archive_write_set_format_mtree_classic");
-	if (r == ARCHIVE_OK) {
-		struct archive_write *a = (struct archive_write *)_a;
-		struct mtree_writer *mtree;
+	return _archive_write_set_format_mtree(_a, "classic");
+}
 
-		mtree = a->format_data;
+int
+archive_write_set_format_mtree_C(struct archive *_a)
+{
 
-		/* Set to output a mtree archive in classic format. */
-		mtree->classic = 1;
-		/* Basically, mtree classic format uses '/set' global
-		 * value. */
-		mtree->output_global_set = 1;
-	}
-	return (r);
+	return _archive_write_set_format_mtree(_a, "C");
+}
+
+int
+archive_write_set_format_mtree_D(struct archive *_a)
+{
+
+	return _archive_write_set_format_mtree(_a, "D");
 }
 
 static void
