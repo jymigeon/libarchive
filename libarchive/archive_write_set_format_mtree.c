@@ -1219,13 +1219,10 @@ write_mtree_entry_tree(struct archive_write *a)
 				 * Ascend the tree; go back to the parent.
 				 */
 				mtree->depth--;
-				if (mtree->classic) {
-					ret = write_dot_dot_entry(a,
-						np->parent);
-					if (ret != ARCHIVE_OK)
-						return (ARCHIVE_FATAL);
-				}
 				np = np->parent;
+				ret = write_dot_dot_entry(a, np);
+				if (ret != ARCHIVE_OK)
+					return ARCHIVE_FATAL;
 			} else {
 				/*
 				 * Switch to next mtree entry in the directory.
