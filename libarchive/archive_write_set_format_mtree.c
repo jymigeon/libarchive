@@ -1893,12 +1893,7 @@ mtree_entry_setup_filenames(struct archive_write *a, struct mtree_entry *file,
 	 * Find out the position which points the last position of
 	 * path separator('/').
 	 */
-	slash = NULL;
-	for (; *p != '\0'; p++) {
-		if (*p == '/')
-			slash = p;
-	}
-	if (slash == NULL) {
+	if ((slash = strrchr(p, '/')) == NULL) {
 		/* The pathname doesn't have a parent directory. */
 		file->parentdir.length = len;
 		archive_string_copy(&(file->basename), &(file->parentdir));
