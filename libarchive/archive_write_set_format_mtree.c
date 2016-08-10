@@ -219,9 +219,15 @@ struct mtree_writer {
 						 * entry resides */
 
 	/* Options */
+	int comments;		/* If it is set, print '#' comments. */
+	int blanklines;		/* If it is set, print blank lines when
+				 * entering/leaving directories. */
 	int dironly;		/* If it is set, ignore all files except
 				 * directory files, like mtree(8) -d option. */
 	int indent;		/* If it is set, indent output data. */
+	int output_dot_dot;	/* If it is set, dot dot entries will be
+				 * printed. It is set by default, except for
+				 * -C and -D formats. */
 	int output_global_set;	/* If it is set, use /set keyword to set
 				 * global values. When generating mtree
 				 * classic format, it is set by default. */
