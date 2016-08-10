@@ -49,6 +49,7 @@ __FBSDID("$FreeBSD: head/lib/libarchive/archive_read_support_format_mtree.c 2011
 #include "archive.h"
 #include "archive_entry.h"
 #include "archive_private.h"
+#include "archive_rb.h"
 #include "archive_read_private.h"
 #include "archive_string.h"
 #include "archive_pack_dev.h"
@@ -81,7 +82,9 @@ struct mtree_option {
 };
 
 struct mtree_entry {
+	struct archive_rb_node rbnode;
 	struct mtree_entry *next;
+	struct mtree_entry *parent;
 	struct mtree_option *options;
 	struct archive_string name;
 	char full;
