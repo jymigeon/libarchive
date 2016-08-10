@@ -96,7 +96,7 @@ struct mtree {
 	int			 fd;
 	int			 archive_format;
 	const char		*archive_format_name;
-	struct mtree_entry	*entries;
+	struct mtree_entry	*root;
 	struct mtree_entry	*this_entry;
 	struct archive_string	 current_dir;
 	struct archive_string	 contents_name;
@@ -248,7 +248,7 @@ cleanup(struct archive_read *a)
 
 	mtree = a->format->data;
 
-	p = mtree->entries;
+	p = mtree->root;
 	while (p != NULL) {
 		q = p->next;
 		archive_string_free(p->name);
@@ -877,7 +877,7 @@ process_add_entry(struct archive_read *a, struct mtree *mtree,
 
 	/* Add this entry to list. */
 	if (*last_entry == NULL)
-		mtree->entries = entry;
+		mtree->root = entry;
 	else
 		(*last_entry)->next = entry;
 	*last_entry = entry;
@@ -968,7 +968,7 @@ read_mtree(struct archive_read *a, struct mtree *mtree)
 	for (counter = 1; ; ++counter) {
 		len = readline(a, mtree, &p, 65536);
 		if (len == 0) {
-			mtree->this_entry = mtree->entries;
+			mtree->this_entry = mtree->root;
 			free_options(global);
 			return (ARCHIVE_OK);
 		}
@@ -1030,7 +1030,7 @@ read_header(struct archive_read *a, struct archive_entry *entry)
 		mtree->fd = -1;
 	}
 
-	if (mtree->entries == NULL) {
+	if (mtree->root == NULL) {
 		mtree->resolver = archive_entry_linkresolver_new();
 		if (mtree->resolver == NULL)
 			return ARCHIVE_FATAL;
