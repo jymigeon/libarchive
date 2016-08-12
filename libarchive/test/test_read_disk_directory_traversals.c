@@ -1690,7 +1690,7 @@ test_all_visit_types(void)
 			assertEqualInt(f->vt, VISIT_TYPE_REGULAR);
 			f->vt = VISIT_TYPE_BEFORE_CONTENTS;
 		} else if (type == VISIT_TYPE_AFTER_CONTENTS) {
-			/* 
+			/*
 			 * AFTER_CONTENTS state: the entry should be in
 			 * BEFORE_CONTENTS state.
 			 * All children should be in either a REGULAR state
@@ -1940,11 +1940,11 @@ DEFINE_TEST(test_read_disk_directory_traversals)
 {
 	/* Basic test. */
 	test_basic();
-	/* Test hybird mode; follow symlink initially, then not. */
+	/* Test hybrid mode; follow symlink initially, then not. */
 	test_symlink_hybrid();
-	/* Test logcal mode; follow all symlinks. */
+	/* Test logical mode; follow all symlinks. */
 	test_symlink_logical();
-	/* Test logcal mode; prevent loop in symlinks. */ 
+	/* Test logical mode; prevent loop in symlinks. */
 	test_symlink_logical_loop();
 	/* Test to restore atime. */
 	test_restore_atime();
