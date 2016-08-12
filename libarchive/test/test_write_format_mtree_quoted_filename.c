@@ -30,8 +30,8 @@ __FBSDID("$FreeBSD$");
 static char buff[4096];
 
 static const char image [] = {
-"#mtree\n"
-"./a\\040!$\\043&\\075_^z\\177~ mode=644 type=file\n"
+"#mtree v2.0\n"
+"./a\\040!$\\043&\\075_^z\\177~ type=file mode=644\n"
 };
 
 
@@ -50,6 +50,8 @@ DEFINE_TEST(test_write_format_mtree_quoted_filename)
 		archive_write_set_format_option(a, NULL, "type", "1"));
 	assertEqualIntA(a, ARCHIVE_OK,
 		archive_write_set_format_option(a, NULL, "mode", "1"));
+	assertEqualIntA(a, ARCHIVE_OK,
+		archive_write_set_format_option(a, NULL, "comments", "0"));
 	assertEqualIntA(a, ARCHIVE_OK,
 		archive_write_open_memory(a, buff, sizeof(buff)-1, &used));
 

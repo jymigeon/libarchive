@@ -53,7 +53,7 @@ static struct {
 
 static const char image [] = {
 "#\t   user: libarchive\n"
-"#\t   machine: libarchive-test\n"
+"#\tmachine: libarchive-test\n"
 "#\t   tree: /\n"
 "#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
 "# .\n"
@@ -67,7 +67,7 @@ static const char image [] = {
 "\n"
 "# ./subdir\n"
 "/set mode=664\n"
-"subdir          type=dir mode=755 time=1233504586.0 mode=755\n"
+"subdir          type=dir mode=755 time=1233504586.0\n"
 "    README      size=8 uid=1002 time=1231975636.0\n"
 "    config      size=8 uid=1003 gid=1003 time=1232266273.0\n"
 "# ./subdir\n"
@@ -91,7 +91,7 @@ static const char image [] = {
 
 static const char image_dironly [] = {
 "#\t   user: libarchive\n"
-"#\t   machine: libarchive-test\n"
+"#\tmachine: libarchive-test\n"
 "#\t   tree: /\n"
 "#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
 "# .\n"
