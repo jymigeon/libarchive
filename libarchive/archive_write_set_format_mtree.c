@@ -917,7 +917,7 @@ archive_write_mtree_header(struct archive_write *a,
 		if (mtree->classic == 0) {
 			archive_string_sprintf(&mtree->buf, "#mtree v2.0\n");
 		}
-		if (mtree->comments == 1) {
+		if (mtree->comments != 0) {
 			archive_string_sprintf(&mtree->buf,
 			    "#\t   user: %s\n"
 			    "#\tmachine: %s\n"
