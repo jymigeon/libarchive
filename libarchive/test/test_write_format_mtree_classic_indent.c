@@ -53,7 +53,7 @@ static struct {
 
 static const char image [] = {
 "#\t   user: libarchive\n"
-"#\t   machine: libarchive-test\n"
+"#\tmachine: libarchive-test\n"
 "#\t   tree: /\n"
 "#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
 "# .\n"
@@ -92,13 +92,13 @@ static const char image [] = {
 
 static const char image_dironly [] = {
 "#\t   user: libarchive\n"
-"#\t   machine: libarchive-test\n"
+"#\tmachine: libarchive-test\n"
 "#\t   tree: /\n"
 "#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
 "# .\n"
-"\n"
 "/set type=dir uid=1001 gid=1001 mode=755\n"
 ".               time=1231975636.0\n"
+"\n"
 "# ./subdir\n"
 "    subdir          time=1233504586.0\n"
 "    # ./subdir\n"
