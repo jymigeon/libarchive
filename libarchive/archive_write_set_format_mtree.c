@@ -1079,19 +1079,18 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		break;
 	}
 
-	if ((keys & F_GNAME) != 0 && archive_strlen(&me->gname) > 0)
-		mtree_entry_append_key(str, mtree->pathlast,
-		    "gname=%s", me->gname.s);
-	if ((keys & F_GID) != 0)
-		mtree_entry_append_key(str, mtree->pathlast,
-		    "gid=%jd", (intmax_t)me->gid);
-
 	if ((keys & F_UNAME) != 0 && archive_strlen(&me->uname) > 0)
 		mtree_entry_append_key(str, mtree->pathlast,
 		    "uname=%s", me->uname.s);
 	if ((keys & F_UID) != 0)
 		mtree_entry_append_key(str, mtree->pathlast,
 		    "uid=%jd", (intmax_t)me->uid);
+	if ((keys & F_GNAME) != 0 && archive_strlen(&me->gname) > 0)
+		mtree_entry_append_key(str, mtree->pathlast,
+		    "gname=%s", me->gname.s);
+	if ((keys & F_GID) != 0)
+		mtree_entry_append_key(str, mtree->pathlast,
+		    "gid=%jd", (intmax_t)me->gid);
 
 	if ((keys & F_MODE) != 0)
 		mtree_entry_append_key(str, mtree->pathlast,
