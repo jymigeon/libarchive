@@ -1029,6 +1029,9 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		if ((keys & F_TYPE) != 0)
 			mtree_entry_append_key(str, mtree->pathlast,
 			    "type=link");
+		if ((keys & F_SLINK) != 0)
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "link=%s", me->symlink.s);
 		break;
 	case AE_IFSOCK:
 		if ((keys & F_TYPE) != 0)
@@ -1039,11 +1042,21 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		if ((keys & F_TYPE) != 0)
 			mtree_entry_append_key(str, mtree->pathlast,
 			    "type=char");
+		if ((keys & F_DEV) != 0)
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "device=native,%ju,%ju",
+			    (uintmax_t)me->rdevmajor,
+			    (uintmax_t)me->rdevminor);
 		break;
 	case AE_IFBLK:
 		if ((keys & F_TYPE) != 0)
 			mtree_entry_append_key(str, mtree->pathlast,
 			    "type=block");
+		if ((keys & F_DEV) != 0)
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "device=native,%ju,%ju",
+			    (uintmax_t)me->rdevmajor,
+			    (uintmax_t)me->rdevminor);
 		break;
 	case AE_IFDIR:
 		if ((keys & F_TYPE) != 0)
@@ -1060,6 +1073,9 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		if ((keys & F_TYPE) != 0)
 			mtree_entry_append_key(str, mtree->pathlast,
 			    "type=file");
+		if ((keys & F_SIZE) != 0)
+			mtree_entry_append_key(str, mtree->pathlast,
+			    "size=%jd", (intmax_t)me->size);
 		break;
 	}
 
@@ -1081,18 +1097,10 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		mtree_entry_append_key(str, mtree->pathlast,
 		    "mode=%o", (unsigned int)me->mode);
 
-	if ((keys & F_DEV) != 0)
-		mtree_entry_append_key(str, mtree->pathlast,
-		    "device=native,%ju,%ju",
-		    (uintmax_t)me->rdevmajor,
-		    (uintmax_t)me->rdevminor);
 	if ((keys & F_NLINK) != 0 &&
 	    me->nlink != 1 && me->filetype != AE_IFDIR)
 		mtree_entry_append_key(str, mtree->pathlast,
 		    "nlink=%u", me->nlink);
-	if ((keys & F_SIZE) != 0)
-		mtree_entry_append_key(str, mtree->pathlast,
-		    "size=%jd", (intmax_t)me->size);
 	if ((keys & F_TIME) != 0)
 		mtree_entry_append_key(str, mtree->pathlast,
 		    "time=%jd.%jd",
@@ -1107,9 +1115,6 @@ write_mtree_entry(struct archive_write *a, struct mtree_entry *me)
 		    (uintmax_t)me->devmajor,
 		    (uintmax_t)me->devminor);
 
-	if ((keys & F_SLINK) != 0)
-		mtree_entry_append_key(str, mtree->pathlast,
-		    "link=%s", me->symlink.s);
 	if ((keys & F_FLAGS) != 0) {
 		if (archive_strlen(&me->fflags_text) > 0)
 			mtree_entry_append_key(str, mtree->pathlast,
