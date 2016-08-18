@@ -31,6 +31,7 @@ static char buff[4096];
 
 static const char image [] = {
 "#mtree v2.0\n"
+"\n"
 "./a\\040!$\\043&\\075_^z\\177~ type=file mode=644\n"
 };
 
