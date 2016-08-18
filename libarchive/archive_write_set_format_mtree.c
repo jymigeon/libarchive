@@ -1259,7 +1259,8 @@ write_mtree_entry_tree(struct archive_write *a)
 			 * Descend the tree.
 			 */
 			np = np->dir_info->children.first;
-			mtree->depth++;
+			if (mtree->indent)
+				mtree->depth++;
 			continue;
 		} else if (mtree->classic) {
 			/*
@@ -1278,7 +1279,8 @@ write_mtree_entry_tree(struct archive_write *a)
 				/*
 				 * Ascend the tree; go back to the parent.
 				 */
-				mtree->depth--;
+				if (mtree->indent)
+					mtree->depth--;
 				np = np->parent;
 				ret = write_dot_dot_entry(a, np);
 				if (ret != ARCHIVE_OK)
