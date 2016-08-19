@@ -52,10 +52,8 @@ static struct {
 };
 
 static const char image [] = {
-"#\t   user: libarchive\n"
-"#\tmachine: libarchive-test\n"
-"#\t   tree: /\n"
-"#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
+"#mtree\n"
+"\n"
 "# .\n"
 "/set type=file uid=1001 gid=1001 mode=644\n"
 ".               type=dir mode=755 time=1231975636.0\n"
@@ -90,10 +88,8 @@ static const char image [] = {
 };
 
 static const char image_dironly [] = {
-"#\t   user: libarchive\n"
-"#\tmachine: libarchive-test\n"
-"#\t   tree: /\n"
-"#\t   date: Wed Jan 14 23:27:16 GMT 2009\n"
+"#mtree\n"
+"\n"
 "# .\n"
 "/set type=dir uid=1001 gid=1001 mode=755\n"
 ".               time=1231975636.0\n"
@@ -131,19 +127,10 @@ test_write_format_mtree_sub(int dironly)
 	assert((a = archive_write_new()) != NULL);
 	assertEqualIntA(a, ARCHIVE_OK, archive_write_set_format_mtree_classic(a));
 
-	/* Prepare header */
-	assertEqualIntA(a, ARCHIVE_OK, archive_write_set_option(
-	    a, NULL, "header-user", "libarchive"));
-	assertEqualIntA(a, ARCHIVE_OK, archive_write_set_option(
-	    a, NULL, "header-machine", "libarchive-test"));
-	assertEqualIntA(a, ARCHIVE_OK, archive_write_set_option(
-	    a, NULL, "header-tree", "/"));
-	assertEqualIntA(a, ARCHIVE_OK, archive_write_set_option(
-	    a, NULL, "header-date", "Wed Jan 14 23:27:16 GMT 2009"));
-
 	if (dironly)
 		assertEqualIntA(a, ARCHIVE_OK,
 			archive_write_set_format_option(a, NULL, "dironly", "1"));
+
 	assertEqualIntA(a, ARCHIVE_OK,
 		archive_write_open_memory(a, buff, sizeof(buff)-1, &used));
 
