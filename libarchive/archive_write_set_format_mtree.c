@@ -219,6 +219,7 @@ struct mtree_writer {
 						 * entry resides */
 
 	/* Options */
+	int header;		/* If it is set, print header. */
 	int comments;		/* If it is set, print '#' comments. */
 	int blanklines;		/* If it is set, print blank lines when
 				 * entering/leaving directories. */
@@ -914,15 +915,15 @@ archive_write_mtree_header(struct archive_write *a,
 
 	if (mtree->first) {
 		mtree->first = 0;
-		if (mtree->classic == 0) {
-			archive_string_sprintf(&mtree->buf, "#mtree v2.0\n");
+		if (mtree->classic != 0) {
+			archive_string_sprintf(&mtree->buf, "#mtree\n");
 		}
-		if (mtree->comments != 0) {
+		if (mtree->header != 0) {
 			archive_string_sprintf(&mtree->buf,
 			    "#\t   user: %s\n"
 			    "#\tmachine: %s\n"
 			    "#\t   tree: %s\n"
-			    "#\t   date: %s",
+			    "#\t   date: %s\n",
 			    mtree->hdr_user.s, mtree->hdr_machine.s,
 			    mtree->hdr_tree.s, mtree->hdr_date.s);
 		}
@@ -1393,10 +1394,6 @@ archive_write_mtree_options(struct archive_write *a, const char *key,
 	case 'c':
 		if (strcmp(key, "cksum") == 0)
 			keybit = F_CKSUM;
-		else if (strcmp(key, "comments") == 0) {
-			mtree->comments = (value != NULL)? 1: 0;
-			return ARCHIVE_OK;
-		}
 		break;
 	case 'd':
 		if (strcmp(key, "device") == 0)
@@ -1543,6 +1540,7 @@ archive_write_set_format_mtree_default(struct archive *_a, const char *fn)
 	mtree->blanklines = 1;
 	mtree->comments = 1;
 	mtree->dironly = 0;
+	mtree->header = 1;
 	mtree->indent = 0;
 	mtree->output_dot_dot = 1;
 	archive_string_init(&mtree->cur_dirstr);
@@ -1590,13 +1588,14 @@ _archive_write_set_format_mtree(struct archive *_a, const char *format)
 			/* Basically, mtree classic format uses '/set' global
 			 * value. */
 			mtree->output_global_set = 1;
+			mtree->header = 0;
 			return ARCHIVE_OK;
 		}
 		break;
 	case 'C':
 		if (strcmp(format, "C") == 0) {
-			mtree->blanklines = mtree->classic = 0;
-			mtree->comments = mtree->indent = 0;
+			mtree->blanklines = mtree->classic = mtree->indent = 0;
+			mtree->comments = mtree->header = 0;
 			mtree->output_dot_dot = mtree->output_global_set = 0;
 			mtree->pathlast = 0;
 			return ARCHIVE_OK;
@@ -1610,8 +1609,8 @@ _archive_write_set_format_mtree(struct archive *_a, const char *format)
 		break;
 	case 'D':
 		if (strcmp(format, "D") == 0) {
-			mtree->blanklines = mtree->classic = 0;
-			mtree->comments = mtree->indent = 0;
+			mtree->blanklines = mtree->classic = mtree->indent = 0;
+			mtree->comments = mtree->header = 0;
 			mtree->output_dot_dot = mtree->output_global_set = 0;
 			mtree->pathlast = 1;
 			return ARCHIVE_OK;
