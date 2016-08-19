@@ -915,7 +915,7 @@ archive_write_mtree_header(struct archive_write *a,
 
 	if (mtree->first) {
 		mtree->first = 0;
-		if (mtree->classic != 0) {
+		if (mtree->comments != 0) {
 			archive_string_sprintf(&mtree->buf, "#mtree\n");
 		}
 		if (mtree->header != 0) {
